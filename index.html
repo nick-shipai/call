@@ -1,173 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Random Video Call</title>
-  <style>
-    #local-video, #remote-video {
-      width: 45%;
-      height: auto;
-      margin: 5%;
-    }
-    #container {
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      margin-top: 50px;
-    }
-    button {
-      padding: 10px 20px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Anonymous</title>
+    <link rel="stylesheet" href="search.css">
 </head>
 <body>
+    <section id="chat-container">
+        <div id="title-text">Searching...</div>
+        <div id="searchImgCon">
+            <img src="earth.png" id="searchImg" alt="search-img">
+        </div>
+        <div id="search-text1">Choose a gender to start searching</div>
+        <div id="search-text">Searching for a partner...</div>
+        <div id="search-text2">Please wait...</div>
+        <div id="search-text3">Looking for the right person</div>
+        <div id="search-text4">Over <div id="totalOnline"></div> people online</div>
+        <div id="gender-div">
+            <div id="gender-man" class="gender-option" data-gender="man" onclick="selectGender('man')">
+                Man &#128104; <span id="check-man" style="display: none;">✔️</span>
+            </div>
+            <div id="gender-woman" class="gender-option" data-gender="woman" onclick="selectGender('woman')">
+                Woman &#128105; <span id="check-woman" style="display: none;">✔️</span>
+            </div>
+        </div>
+    </section>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getDatabase, ref, set, onDisconnect, onValue, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
-  <h2>Random Video Call</h2>
-  <div id="container">
-    <video id="local-video" autoplay muted></video>
-    <video id="remote-video" autoplay></video>
-  </div>
-  <button id="start-call">Start Call</button>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-
-    // Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyDwKsNlw7wUDyQ_yEUhpYZdHIEnWFqQVyc",
-      authDomain: "gyfp-48c48.firebaseapp.com",
-      databaseURL: "https://gyfp-48c48-default-rtdb.firebaseio.com",
-      projectId: "gyfp-48c48",
-      storageBucket: "gyfp-48c48.appspot.com",
-      messagingSenderId: "1098492817072",
-      appId: "1:1098492817072:web:19ffb2510028ad75bf1575"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const database = getDatabase(app);
-    const localVideo = document.getElementById('local-video');
-    const remoteVideo = document.getElementById('remote-video');
-    const startCallButton = document.getElementById('start-call');
-    
-    let localStream;
-    let peerConnection;
-    let remoteUserId;
-    let localUserId = auth.currentUser?.uid;
-
-    // Handle user authentication
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        console.log('User authenticated:', user.uid);
-        localUserId = user.uid;
-        const userRef = ref(database, 'users/' + user.uid);
-        set(userRef, { status: 'active' }); // Mark user as active
-      } else {
-        // Sign in anonymously for demo purposes
-        signInAnonymously(auth).catch(error => {
-          console.error('Error signing in:', error);
-        });
-      }
-    });
-
-    // Fetch a random active user
-    function getRandomUser() {
-      const usersRef = ref(database, 'users');
-      onValue(usersRef, snapshot => {
-        const users = snapshot.val();
-        const activeUsers = [];
-        for (const userId in users) {
-          if (users[userId].status === 'active' && userId !== localUserId) {
-            activeUsers.push(userId);
-          }
-        }
-        if (activeUsers.length > 0) {
-          remoteUserId = activeUsers[Math.floor(Math.random() * activeUsers.length)];
-          console.log('Random user for call:', remoteUserId);
-          startCall(remoteUserId);
-        } else {
-          alert('No active users available.');
-        }
-      });
-    }
-
-    // Initialize video call with WebRTC
-    async function startCall(remoteUserId) {
-      try {
-        // Get local media stream
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localVideo.srcObject = localStream;
-
-        // Create peer connection
-        peerConnection = new RTCPeerConnection();
-
-        // Add local stream tracks to peer connection
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-        // When remote stream is received, show it in the remote video
-        peerConnection.ontrack = event => {
-          remoteVideo.srcObject = event.streams[0];
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwKsNlw7wUDyQ_yEUhpYZdHIEnWFqQVyc",
+            authDomain: "gyfp-48c48.firebaseapp.com",
+            databaseURL: "https://gyfp-48c48-default-rtdb.firebaseio.com",
+            projectId: "gyfp-48c48",
+            storageBucket: "gyfp-48c48.appspot.com",
+            messagingSenderId: "1098492817072",
+            appId: "1:1098492817072:web:19ffb2510028ad75bf1575"
         };
 
-        // Setup ICE candidate handling
-        peerConnection.onicecandidate = event => {
-          if (event.candidate) {
-            // Send ICE candidate to remote user through Firebase
-            const iceCandidateRef = ref(database, `iceCandidates/${remoteUserId}`);
-            set(iceCandidateRef, { candidate: event.candidate });
-          }
-        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
 
-        // Create offer
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
+        let user = null;
+        let selectedGender = null;
+        let searchTimer;
+        let isSearching = false;
 
-        // Send offer to the remote user
-        const callRef = ref(database, 'calls/' + remoteUserId);
-        set(callRef, { offer: offer.sdp, from: localUserId });
+        function saveUserGender() {
+            if (selectedGender && user) {
+                const userRef = ref(database, 'online/' + user.uid);
+                set(userRef, {
+                    uid: user.uid,
+                    gender: selectedGender,
+                    busy: false // Make sure the user is not busy initially
+                });
+                onDisconnect(userRef).remove();
+            }
+        }
 
-        // Listen for the answer from the remote user
-        const callAnswerRef = ref(database, 'calls/' + localUserId);
-        onValue(callAnswerRef, snapshot => {
-          const callData = snapshot.val();
-          if (callData && callData.answer) {
-            const answer = new RTCSessionDescription({ type: 'answer', sdp: callData.answer });
-            peerConnection.setRemoteDescription(answer);
-          }
+        onAuthStateChanged(auth, (currentUser) => {
+            if (currentUser) {
+                user = currentUser;
+                // Only enable searching if the gender is selected
+                if (selectedGender) {
+                    saveUserGender();
+                }
+            } else {
+                signInAnonymously(auth).catch((error) => {
+                    console.error("Error signing in anonymously: ", error);
+                });
+            }
         });
 
-        // Listen for ICE candidates from the remote user
-        const remoteIceCandidateRef = ref(database, `iceCandidates/${localUserId}`);
-        onValue(remoteIceCandidateRef, snapshot => {
-          const iceCandidateData = snapshot.val();
-          if (iceCandidateData && iceCandidateData.candidate) {
-            const candidate = new RTCIceCandidate(iceCandidateData.candidate);
-            peerConnection.addIceCandidate(candidate);
-          }
-        });
+        const genderOptions = document.querySelectorAll('.gender-option');
 
-      } catch (error) {
-        console.error('Error starting call:', error);
-      }
-    }
+        window.selectGender = function(gender) {
+            selectedGender = gender;
+            genderOptions.forEach(option => {
+                const checkMark = option.querySelector('span');
+                if (option.dataset.gender === gender) {
+                    checkMark.style.display = 'inline';
+                } else {
+                    checkMark.style.display = 'none';
+                }
+            });
 
-    // Handle start call button click
-    startCallButton.addEventListener('click', () => {
-      getRandomUser(); // Get a random active user when the button is clicked
-    });
+            // Hide the gender selection message after a gender is selected
+            document.getElementById('search-text1').style.display = 'none'; // Hide the "Choose a gender" text
 
-  </script>
+            // Start the search process
+            if (user) {
+                saveUserGender();
+                startSearchCycle();  // Start the cycle of text updates
+                findMatch(); // Call the function to find a match
+            }
+        }
+
+        function startSearchCycle() {
+            // Hide the initial text and show the "Searching" message
+            document.getElementById('gender-div').style.display = 'none'; // Hide gender selection after choosing
+
+            document.getElementById('search-text').style.display = 'block'; // Display "Searching for a partner..."
+            document.getElementById('search-text2').style.display = 'none';
+            document.getElementById('search-text3').style.display = 'none';
+            document.getElementById('search-text4').style.display = 'none';
+
+            let counter = 0;
+            let messages = ['searching', 'looking', 'online'];  // Array to cycle through messages
+            let elapsedTime = 0; // Track time elapsed
+
+            // Set an interval to cycle through the texts
+            searchTimer = setInterval(() => {
+                if (elapsedTime < 20) {
+                    // Cycle through texts
+                    switch (counter) {
+                        case 0:
+                            document.getElementById('search-text').style.display = 'block';
+                            document.getElementById('search-text3').style.display = 'none';
+                            document.getElementById('search-text4').style.display = 'none';
+                            break;
+                        case 1:
+                            document.getElementById('search-text').style.display = 'none';
+                            document.getElementById('search-text3').style.display = 'block';
+                            document.getElementById('search-text4').style.display = 'none';
+                            break;
+                        case 2:
+                            document.getElementById('search-text').style.display = 'none';
+                            document.getElementById('search-text3').style.display = 'none';
+                            document.getElementById('search-text4').style.display = 'block';
+                            break;
+                    }
+
+                    counter = (counter + 1) % messages.length; // Cycle through messages
+                    elapsedTime++; // Increment elapsed time
+                }
+
+                // After 20 seconds, show "Please wait..." and hide other texts
+                if (elapsedTime >= 20) {
+                    document.getElementById('search-text2').style.display = 'block'; // Show "Please wait..."
+                    document.getElementById('search-text').style.display = 'none';
+                    document.getElementById('search-text3').style.display = 'none';
+                    document.getElementById('search-text4').style.display = 'none';
+                    clearInterval(searchTimer); // Stop the text cycling
+                }
+
+            }, 5000); // Update every 5 seconds
+        }
+
+        function findMatch() {
+            // Get the reference to the "online" node
+            const onlineRef = ref(database, 'online');
+
+            // Listen for the current list of online users
+            onValue(onlineRef, (snapshot) => {
+                const onlineUsers = snapshot.val();
+                if (onlineUsers) {
+                    const usersArray = Object.values(onlineUsers);
+                    const oppositeGender = selectedGender === 'man' ? 'woman' : 'man';
+
+                    // Filter users of the opposite gender and not already busy
+                    const availableUsers = usersArray.filter(user => user.gender === oppositeGender && !user.busy);
+
+                    if (availableUsers.length > 0) {
+                        // Randomly select a user from the available users
+                        const randomIndex = Math.floor(Math.random() * availableUsers.length);
+                        const matchedUser = availableUsers[randomIndex];
+
+                        // Set "busy" to true for both users
+                        const updates = {};
+                        updates[`online/${user.uid}/matched`] = matchedUser.uid;
+                        updates[`online/${matchedUser.uid}/matched`] = user.uid;
+                        updates[`online/${user.uid}/busy`] = true;
+                        updates[`online/${matchedUser.uid}/busy`] = true;
+
+                        // Update both users' statuses in Firebase
+                        update(ref(database), updates);
+
+                        console.log('Match found with:', matchedUser.uid);
+                    } else {
+                        alert('No users found! Please try again later.');
+                    }
+                } else {
+                    alert('No users are online at the moment!');
+                }
+            });
+        }
+
+    </script>
 </body>
 </html>

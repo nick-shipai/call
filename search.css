@@ -1,0 +1,72 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'roboto', sans-serif;
+}
+#chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    background-color: #f5f5f5;
+}
+#title-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+#searchImgCon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+#searchImg {
+    width: 100px;
+    height: 100px;
+}
+#search-text {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 1rem;
+    display: none;
+}
+#search-text2, #search-text3, #search-text4, #search-text1 {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 1rem;
+    display: none;
+}
+#gender-div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+.gender-option {
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 5px;
+    font-family: 'roboto', sans-serif;
+}
+.gender-option:hover {
+    background-color: #e0e0e0;
+    transform: scale(1.1);
+}
+#check-man {
+    color: white;
+
+}
+#check-woman {
+    color: white;
+
+}
+#search-text1 {
+    display: block;
+}
