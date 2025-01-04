@@ -12,18 +12,20 @@
         <div id="searchImgCon">
             <img src="earth.png" id="searchImg" alt="search-img">
         </div>
-        <div id="search-text1">Choose a gender to start searching</div>
+        <div id="text-div">
+            <div id="search-text1">Choose a gender to start searching</div>
         <div id="search-text">Searching for a partner...</div>
         <div id="search-text2">Please wait...</div>
         <div id="search-text3">Looking for the right person</div>
         <div id="search-text4">Over <div id="totalOnline"></div> people online</div>
+        </div>
         <div id="gender-div">
             <div id="gender-man" class="gender-option" data-gender="man" onclick="selectGender('man')">
                 Man &#128104; <span id="check-man" style="display: none;">✔️</span>
             </div>
             <div id="gender-woman" class="gender-option" data-gender="woman" onclick="selectGender('woman')">
                 Woman &#128105; <span id="check-woman" style="display: none;">✔️</span>
-            </div>
+            </div><br><br>
         </div>
     </section>
     <script type="module">
@@ -101,94 +103,107 @@
         }
 
         function startSearchCycle() {
-            // Hide the initial text and show the "Searching" message
-            document.getElementById('gender-div').style.display = 'none'; // Hide gender selection after choosing
+    document.getElementById('search-text').style.display = 'block'; // "Searching for a partner..."
+    document.getElementById('search-text2').style.display = 'none';
+    document.getElementById('search-text3').style.display = 'none';
+    document.getElementById('search-text4').style.display = 'none';
 
-            document.getElementById('search-text').style.display = 'block'; // Display "Searching for a partner..."
-            document.getElementById('search-text2').style.display = 'none';
+    let counter = 0;
+    let elapsedTime = 0; // Track elapsed time
+    const messages = ['searching', 'looking', 'online'];
+
+    searchTimer = setInterval(() => {
+        if (elapsedTime < 5) {
+            // Cycle through messages
+            switch (counter) {
+                case 0:
+                    document.getElementById('search-text').style.display = 'block';
+                    document.getElementById('search-text3').style.display = 'none';
+                    document.getElementById('search-text4').style.display = 'none';
+                    break;
+                case 1:
+                    document.getElementById('search-text').style.display = 'none';
+                    document.getElementById('search-text3').style.display = 'block';
+                    document.getElementById('search-text4').style.display = 'none';
+                    break;
+                case 2:
+                    document.getElementById('search-text').style.display = 'none';
+                    document.getElementById('search-text3').style.display = 'none';
+                    document.getElementById('search-text4').style.display = 'block';
+                    break;
+            }
+            counter = (counter + 1) % messages.length;
+            elapsedTime++;
+        } else {
+            document.getElementById('search-text2').style.display = 'block'; // Show "Please wait..."
+            document.getElementById('search-text').style.display = 'none';
             document.getElementById('search-text3').style.display = 'none';
             document.getElementById('search-text4').style.display = 'none';
 
-            let counter = 0;
-            let messages = ['searching', 'looking', 'online'];  // Array to cycle through messages
-            let elapsedTime = 0; // Track time elapsed
+            clearInterval(searchTimer); // Stop cycling texts
 
-            // Set an interval to cycle through the texts
-            searchTimer = setInterval(() => {
-                if (elapsedTime < 20) {
-                    // Cycle through texts
-                    switch (counter) {
-                        case 0:
-                            document.getElementById('search-text').style.display = 'block';
-                            document.getElementById('search-text3').style.display = 'none';
-                            document.getElementById('search-text4').style.display = 'none';
-                            break;
-                        case 1:
-                            document.getElementById('search-text').style.display = 'none';
-                            document.getElementById('search-text3').style.display = 'block';
-                            document.getElementById('search-text4').style.display = 'none';
-                            break;
-                        case 2:
-                            document.getElementById('search-text').style.display = 'none';
-                            document.getElementById('search-text3').style.display = 'none';
-                            document.getElementById('search-text4').style.display = 'block';
-                            break;
-                    }
-
-                    counter = (counter + 1) % messages.length; // Cycle through messages
-                    elapsedTime++; // Increment elapsed time
-                }
-
-                // After 20 seconds, show "Please wait..." and hide other texts
-                if (elapsedTime >= 20) {
-                    document.getElementById('search-text2').style.display = 'block'; // Show "Please wait..."
-                    document.getElementById('search-text').style.display = 'none';
-                    document.getElementById('search-text3').style.display = 'none';
-                    document.getElementById('search-text4').style.display = 'none';
-                    clearInterval(searchTimer); // Stop the text cycling
-                }
-
-            }, 5000); // Update every 5 seconds
+            // Set a timeout to reset after 10 seconds if no match is found
+            setTimeout(() => {
+                resetSearch();
+            }, 1);
         }
+    }, 5000); // Update every 5 seconds
+}
 
-        function findMatch() {
-            // Get the reference to the "online" node
-            const onlineRef = ref(database, 'online');
+function findMatch() {
+    const onlineRef = ref(database, 'online');
+    onValue(onlineRef, (snapshot) => {
+        const onlineUsers = snapshot.val();
+        if (onlineUsers) {
+            const usersArray = Object.values(onlineUsers);
+            const oppositeGender = selectedGender === 'man' ? 'woman' : 'man';
+            const availableUsers = usersArray.filter(user => user.gender === oppositeGender && !user.busy);
 
-            // Listen for the current list of online users
-            onValue(onlineRef, (snapshot) => {
-                const onlineUsers = snapshot.val();
-                if (onlineUsers) {
-                    const usersArray = Object.values(onlineUsers);
-                    const oppositeGender = selectedGender === 'man' ? 'woman' : 'man';
+            if (availableUsers.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableUsers.length);
+                const matchedUser = availableUsers[randomIndex];
 
-                    // Filter users of the opposite gender and not already busy
-                    const availableUsers = usersArray.filter(user => user.gender === oppositeGender && !user.busy);
+                // Mark both users as busy and matched
+                const updates = {};
+                updates[`online/${user.uid}/matched`] = matchedUser.uid;
+                updates[`online/${matchedUser.uid}/matched`] = user.uid;
+                updates[`online/${user.uid}/busy`] = true;
+                updates[`online/${matchedUser.uid}/busy`] = true;
 
-                    if (availableUsers.length > 0) {
-                        // Randomly select a user from the available users
-                        const randomIndex = Math.floor(Math.random() * availableUsers.length);
-                        const matchedUser = availableUsers[randomIndex];
+                update(ref(database), updates);
 
-                        // Set "busy" to true for both users
-                        const updates = {};
-                        updates[`online/${user.uid}/matched`] = matchedUser.uid;
-                        updates[`online/${matchedUser.uid}/matched`] = user.uid;
-                        updates[`online/${user.uid}/busy`] = true;
-                        updates[`online/${matchedUser.uid}/busy`] = true;
+                console.log('Match found with:', matchedUser.uid);
+                alert('Match found with: ' + matchedUser.uid);
 
-                        // Update both users' statuses in Firebase
-                        update(ref(database), updates);
-
-                        console.log('Match found with:', matchedUser.uid);
-                    } else {
-                        alert('No users found! Please try again later.');
-                    }
-                } else {
-                    alert('No users are online at the moment!');
-                }
-            });
+                // Stop the search and clear the timer
+                clearInterval(searchTimer);
+            } else {
+                console.log('No users found! Searching continues...');
+            }
+        } else {
+            console.log('No users are online at the moment! Searching continues...');
         }
+    });
+}
+
+function resetSearch() {
+    console.log('No match found. Resetting search.');
+
+    // Reset user status in Firebase
+    const userRef = ref(database, 'online/' + user.uid);
+    set(userRef, null).then(() => {
+        // Allow the user to search again
+        selectedGender = null;
+
+        // Reset UI
+        document.getElementById('gender-div').style.display = 'block'; // Show gender selection
+        document.getElementById('search-text1').style.display = 'block'; // Show "Choose a gender"
+        document.getElementById('search-text').style.display = 'none';
+        document.getElementById('search-text2').style.display = 'none';
+        document.getElementById('search-text3').style.display = 'none';
+        document.getElementById('search-text4').style.display = 'none';
+    });
+}
 
     </script>
 </body>

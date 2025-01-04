@@ -42,10 +42,10 @@
     display: none;
 }
 #gender-div {
-    display: flex;
     justify-content: center;
     align-items: center;
-    padding: 1rem;
+    margin-bottom: 10px;
+    margin-left: 42%;
 }
 .gender-option {
     font-size: 1.2rem;
@@ -54,6 +54,12 @@
     cursor: pointer;
     border-radius: 5px;
     font-family: 'roboto', sans-serif;
+    height: 50px;
+    width: 200px;
+    margin-top: 10px;
+    text-align: center;
+    margin-left: 5px;
+
 }
 .gender-option:hover {
     background-color: #e0e0e0;
@@ -61,12 +67,26 @@
 }
 #check-man {
     color: white;
+    text-align: center;
+    font-size: 15px;
 
 }
 #check-woman {
     color: white;
+    text-align: center;
+    font-size: 15px;
 
 }
 #search-text1 {
     display: block;
+}
+@media (max-width: 730px) {
+    .gender-option {
+        height: 35px;
+        width: 100%;
+        padding: 0;
+    }
+    #gender-div {
+        margin: 0;
+    }
 }
