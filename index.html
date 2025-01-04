@@ -77,7 +77,7 @@
                     if (chatKey.includes(user.uid)) {
                         // Redirect to the chat if the user is in a chat
                         const matchedUid = chatKey.replace(user.uid, '').replace('Chat', '');
-                        window.location.href = `/chat/index.html?chat=${user.uid}%20${matchedUid}`;
+                        window.location.href = `index.html?chat=${user.uid}%20${matchedUid}`;
                         return; // Exit after redirect
                     }
                 }
@@ -91,7 +91,7 @@
             if (userData && userData.matched) {
                 // Redirect to chat page if match is found
                 const matchedUid = userData.matched;
-                window.location.href = `/chat/index.html?chat=${user.uid}%20${matchedUid}`;
+                window.location.href = `index.html?chat=${user.uid}%20${matchedUid}`;
 
                 // Create a chat node in the database
                 const chatKey = `${user.uid}Chat${matchedUid}`;
