@@ -14,10 +14,10 @@
         </div>
         <div id="text-div">
             <div id="search-text1">Choose a gender to start searching</div>
-            <div id="search-text">Searching for a partner...</div>
-            <div id="search-text2">Please wait...</div>
-            <div id="search-text3">Looking for the right person</div>
-            <div id="search-text4">Over <div id="totalOnline"></div> people online</div>
+        <div id="search-text">Searching for a partner...</div>
+        <div id="search-text2">Please wait...</div>
+        <div id="search-text3">Looking for the right person</div>
+        <div id="search-text4">Over <div id="totalOnline"></div> people online</div>
         </div>
         <div id="gender-div">
             <div id="gender-man" class="gender-option" data-gender="man" onclick="selectGender('man')">
@@ -28,7 +28,6 @@
             </div><br><br>
         </div>
     </section>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
@@ -64,43 +63,51 @@
                 onDisconnect(userRef).remove();
             }
         }
-
         onAuthStateChanged(auth, (currentUser) => {
     if (currentUser) {
         user = currentUser;
 
-        // Check if the user is already part of a chat only after selecting gender
-        if (selectedGender) {
-            const chatRef = ref(database, `chats`);
-            onValue(chatRef, (snapshot) => {
-                const chatData = snapshot.val();
-                if (chatData) {
-                    // Check if the current user is part of any chat
-                    for (let chatKey in chatData) {
-                        if (chatKey.includes(user.uid)) {
-                            // Redirect to the chat if the user is in a chat
-                            const matchedUid = chatKey.replace(user.uid, '').replace('Chat', '');
-                            // Check if the matched user is online in the "online" node
-                            const matchedUserRef = ref(database, `online/${matchedUid}`);
-                            onValue(matchedUserRef, (snapshot) => {
-                                const matchedUserData = snapshot.val();
-                                if (matchedUserData) {
-                                    // If matched user is online, redirect to the chat
-                                    window.location.href = `chat.html?chat=${user.uid}%20${matchedUid}`;
-                                } else {
-                                    // Matched user is offline, do not redirect
-                                    console.log('Matched user is offline. No redirection.');
-                                }
-                            });
-                            return; // Exit after checking and potentially redirecting
-                        }
+        // Check if the user is already part of a chat
+        const chatRef = ref(database, `chats`);
+        onValue(chatRef, (snapshot) => {
+            const chatData = snapshot.val();
+            if (chatData) {
+                // Check if the current user is part of any chat
+                for (let chatKey in chatData) {
+                    if (chatKey.includes(user.uid)) {
+                        // Redirect to the chat if the user is in a chat
+                        const matchedUid = chatKey.replace(user.uid, '').replace('Chat', '');
+                        window.location.href = `chat.html?chat=${user.uid}%20${matchedUid}`;
+                        return; // Exit after redirect
                     }
                 }
-            });
+            }
+        });
 
-            // Proceed with the search process if no chat found
+        // Listen for changes to the current user's node
+        const userRef = ref(database, `online/${user.uid}`);
+        onValue(userRef, (snapshot) => {
+            const userData = snapshot.val();
+            if (userData && userData.matched) {
+                // Redirect to chat page if match is found
+                const matchedUid = userData.matched;
+                window.location.href = `chat.html?chat=${user.uid}%20${matchedUid}`;
+
+                // Create a chat node in the database
+                const chatKey = `${user.uid}Chat${matchedUid}`;
+                const chatRef = ref(database, `chats/${chatKey}`);
+                set(chatRef, {
+                    participants: [user.uid, matchedUid],
+                    messages: [] // Initialize empty chat messages
+                }).catch((error) => {
+                    console.error('Error creating chat node:', error);
+                });
+            }
+        });
+
+        // Enable searching if gender is selected
+        if (selectedGender) {
             saveUserGender();
-            findMatch(); // Call the function to find a match
         }
     } else {
         // Sign in anonymously if not authenticated
@@ -113,147 +120,147 @@
         const genderOptions = document.querySelectorAll('.gender-option');
 
         window.selectGender = function(gender) {
-    selectedGender = gender;
-    genderOptions.forEach(option => {
-        const checkMark = option.querySelector('span');
-        if (option.dataset.gender === gender) {
-            checkMark.style.display = 'inline';
-        } else {
-            checkMark.style.display = 'none';
+            selectedGender = gender;
+            genderOptions.forEach(option => {
+                const checkMark = option.querySelector('span');
+                if (option.dataset.gender === gender) {
+                    checkMark.style.display = 'inline';
+                } else {
+                    checkMark.style.display = 'none';
+                }
+            });
+
+            // Hide the gender selection message after a gender is selected
+            document.getElementById('search-text1').style.display = 'none'; // Hide the "Choose a gender" text
+
+            // Start the search process
+            if (user) {
+                saveUserGender();
+                startSearchCycle();  // Start the cycle of text updates
+                findMatch(); // Call the function to find a match
+            }
         }
-    });
-
-    // Hide the gender selection message after a gender is selected
-    document.getElementById('search-text1').style.display = 'none'; // Hide the "Choose a gender" text
-    
-    // Show the searching message
-    document.getElementById('search-text').style.display = 'block'; // Show "Searching for a partner..."
-    document.getElementById('search-text2').style.display = 'none';  // Hide "Please wait..."
-    document.getElementById('search-text3').style.display = 'none';  // Hide "Looking for the right person"
-    document.getElementById('search-text4').style.display = 'none';  // Hide "Over <number> people online"
-
-    startSearchCycle(); // Start the search cycle if a gender is selected
-}
 
         function startSearchCycle() {
-            document.getElementById('search-text').style.display = 'block'; // "Searching for a partner..."
-            document.getElementById('search-text2').style.display = 'none';
+    document.getElementById('search-text').style.display = 'block'; // "Searching for a partner..."
+    document.getElementById('search-text2').style.display = 'none';
+    document.getElementById('search-text3').style.display = 'none';
+    document.getElementById('search-text4').style.display = 'none';
+
+    let counter = 0;
+    let elapsedTime = 0; // Track elapsed time
+    const messages = ['searching', 'looking', 'online'];
+
+    searchTimer = setInterval(() => {
+        if (elapsedTime < 5) {
+            // Cycle through messages
+            switch (counter) {
+                case 0:
+                    document.getElementById('search-text').style.display = 'block';
+                    document.getElementById('search-text3').style.display = 'none';
+                    document.getElementById('search-text4').style.display = 'none';
+                    break;
+                case 1:
+                    document.getElementById('search-text').style.display = 'none';
+                    document.getElementById('search-text3').style.display = 'block';
+                    document.getElementById('search-text4').style.display = 'none';
+                    break;
+                case 2:
+                    document.getElementById('search-text').style.display = 'none';
+                    document.getElementById('search-text3').style.display = 'none';
+                    document.getElementById('search-text4').style.display = 'block';
+                    break;
+            }
+            counter = (counter + 1) % messages.length;
+            elapsedTime++;
+        } else {
+            document.getElementById('search-text2').style.display = 'block'; // Show "Please wait..."
+            document.getElementById('search-text').style.display = 'none';
             document.getElementById('search-text3').style.display = 'none';
             document.getElementById('search-text4').style.display = 'none';
 
-            let counter = 0;
-            let elapsedTime = 0; // Track elapsed time
-            const messages = ['searching', 'looking', 'online'];
+            clearInterval(searchTimer); // Stop cycling texts
 
-            searchTimer = setInterval(() => {
-                if (elapsedTime < 5) {
-                    // Cycle through messages
-                    switch (counter) {
-                        case 0:
-                            document.getElementById('search-text').style.display = 'block';
-                            document.getElementById('search-text3').style.display = 'none';
-                            document.getElementById('search-text4').style.display = 'none';
-                            break;
-                        case 1:
-                            document.getElementById('search-text').style.display = 'none';
-                            document.getElementById('search-text3').style.display = 'block';
-                            document.getElementById('search-text4').style.display = 'none';
-                            break;
-                        case 2:
-                            document.getElementById('search-text').style.display = 'none';
-                            document.getElementById('search-text3').style.display = 'none';
-                            document.getElementById('search-text4').style.display = 'block';
-                            break;
+            // Set a timeout to reset after 10 seconds if no match is found
+            setTimeout(() => {
+                resetSearch();
+            }, 1);
+        }
+    }, 5000); // Update every 5 seconds
+}
+
+function findMatch() {
+    const onlineRef = ref(database, 'online');
+    onValue(onlineRef, (snapshot) => {
+        const onlineUsers = snapshot.val();
+        if (onlineUsers) {
+            const usersArray = Object.values(onlineUsers);
+            const oppositeGender = selectedGender === 'man' ? 'woman' : 'man';
+            const availableUsers = usersArray.filter(user => user.gender === oppositeGender && !user.busy);
+
+            if (availableUsers.length > 0) {
+                // Loop until a non-busy user is found
+                let matchedUser = null;
+                let attempts = 0; // To avoid infinite loop
+
+                while (matchedUser === null && attempts < availableUsers.length) {
+                    const randomIndex = Math.floor(Math.random() * availableUsers.length);
+                    matchedUser = availableUsers[randomIndex];
+
+                    if (matchedUser.busy) {
+                        // If the user is busy, reset matchedUser and try again
+                        matchedUser = null;
                     }
-                    counter = (counter + 1) % messages.length;
-                    elapsedTime++;
-                } else {
-                    document.getElementById('search-text2').style.display = 'block'; // Show "Please wait..."
-                    document.getElementById('search-text').style.display = 'none';
-                    document.getElementById('search-text3').style.display = 'none';
-                    document.getElementById('search-text4').style.display = 'none';
 
-                    clearInterval(searchTimer); // Stop cycling texts
-
-                    // Set a timeout to reset after 10 seconds if no match is found
-                    setTimeout(() => {
-                        resetSearch();
-                    }, 1);
+                    attempts++;
                 }
-            }, 5000); // Update every 5 seconds
-        }
 
-        function findMatch() {
-            const onlineRef = ref(database, 'online');
-            onValue(onlineRef, (snapshot) => {
-                const onlineUsers = snapshot.val();
-                if (onlineUsers) {
-                    const usersArray = Object.values(onlineUsers);
-                    const oppositeGender = selectedGender === 'man' ? 'woman' : 'man';
-                    const availableUsers = usersArray.filter(user => user.gender === oppositeGender && !user.busy);
+                if (matchedUser !== null) {
+                    // Mark both users as busy and matched
+                    const updates = {};
+                    updates[`online/${user.uid}/matched`] = matchedUser.uid;
+                    updates[`online/${matchedUser.uid}/matched`] = user.uid;
+                    updates[`online/${user.uid}/busy`] = true;
+                    updates[`online/${matchedUser.uid}/busy`] = true;
 
-                    if (availableUsers.length > 0) {
-                        // Loop until a non-busy user is found
-                        let matchedUser = null;
-                        let attempts = 0; // To avoid infinite loop
+                    update(ref(database), updates);
 
-                        while (matchedUser === null && attempts < availableUsers.length) {
-                            const randomIndex = Math.floor(Math.random() * availableUsers.length);
-                            matchedUser = availableUsers[randomIndex];
+                    console.log('Match found with:', matchedUser.uid);
+                    alert('Match found with: ' + matchedUser.uid);
 
-                            if (matchedUser.busy) {
-                                // If the user is busy, reset matchedUser and try again
-                                matchedUser = null;
-                            }
-
-                            attempts++;
-                        }
-
-                        if (matchedUser !== null) {
-                            // Mark both users as busy and matched
-                            const updates = {};
-                            updates[`online/${user.uid}/matched`] = matchedUser.uid;
-                            updates[`online/${matchedUser.uid}/matched`] = user.uid;
-                            updates[`online/${user.uid}/busy`] = true;
-                            updates[`online/${matchedUser.uid}/busy`] = true;
-
-                            update(ref(database), updates);
-
-                            console.log('Match found with:', matchedUser.uid);
-                            alert('Match found with: ' + matchedUser.uid);
-
-                            // Stop the search and clear the timer
-                            clearInterval(searchTimer);
-                        } else {
-                            console.log('No available users. Searching continues...');
-                        }
-                    } else {
-                        console.log('No users found! Searching continues...');
-                    }
+                    // Stop the search and clear the timer
+                    clearInterval(searchTimer);
                 } else {
-                    console.log('No users are online at the moment! Searching continues...');
+                    console.log('No available users. Searching continues...');
                 }
-            });
+            } else {
+                console.log('No users found! Searching continues...');
+            }
+        } else {
+            console.log('No users are online at the moment! Searching continues...');
         }
+    });
+}
 
-        function resetSearch() {
-            console.log('No match found. Resetting search.');
+function resetSearch() {
+    console.log('No match found. Resetting search.');
 
-            // Reset user status in Firebase
-            const userRef = ref(database, 'online/' + user.uid);
-            set(userRef, null).then(() => {
-                // Allow the user to search again
-                selectedGender = null;
+    // Reset user status in Firebase
+    const userRef = ref(database, 'online/' + user.uid);
+    set(userRef, null).then(() => {
+        // Allow the user to search again
+        selectedGender = null;
 
-                // Reset UI
-                document.getElementById('gender-div').style.display = 'block'; // Show gender selection
-                document.getElementById('search-text1').style.display = 'block'; // Show "Choose a gender"
-                document.getElementById('search-text').style.display = 'none';
-                document.getElementById('search-text2').style.display = 'none';
-                document.getElementById('search-text3').style.display = 'none';
-                document.getElementById('search-text4').style.display = 'none';
-            });
-        }
+        // Reset UI
+        document.getElementById('gender-div').style.display = 'block'; // Show gender selection
+        document.getElementById('search-text1').style.display = 'block'; // Show "Choose a gender"
+        document.getElementById('search-text').style.display = 'none';
+        document.getElementById('search-text2').style.display = 'none';
+        document.getElementById('search-text3').style.display = 'none';
+        document.getElementById('search-text4').style.display = 'none';
+    });
+}
+
     </script>
 </body>
 </html>
