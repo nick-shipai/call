@@ -63,20 +63,59 @@
                 onDisconnect(userRef).remove();
             }
         }
-
         onAuthStateChanged(auth, (currentUser) => {
-            if (currentUser) {
-                user = currentUser;
-                // Only enable searching if the gender is selected
-                if (selectedGender) {
-                    saveUserGender();
+    if (currentUser) {
+        user = currentUser;
+
+        // Check if the user is already part of a chat
+        const chatRef = ref(database, `chats`);
+        onValue(chatRef, (snapshot) => {
+            const chatData = snapshot.val();
+            if (chatData) {
+                // Check if the current user is part of any chat
+                for (let chatKey in chatData) {
+                    if (chatKey.includes(user.uid)) {
+                        // Redirect to the chat if the user is in a chat
+                        const matchedUid = chatKey.replace(user.uid, '').replace('Chat', '');
+                        window.location.href = `/chat/index.html?chat=${user.uid}%20${matchedUid}`;
+                        return; // Exit after redirect
+                    }
                 }
-            } else {
-                signInAnonymously(auth).catch((error) => {
-                    console.error("Error signing in anonymously: ", error);
+            }
+        });
+
+        // Listen for changes to the current user's node
+        const userRef = ref(database, `online/${user.uid}`);
+        onValue(userRef, (snapshot) => {
+            const userData = snapshot.val();
+            if (userData && userData.matched) {
+                // Redirect to chat page if match is found
+                const matchedUid = userData.matched;
+                window.location.href = `/chat/index.html?chat=${user.uid}%20${matchedUid}`;
+
+                // Create a chat node in the database
+                const chatKey = `${user.uid}Chat${matchedUid}`;
+                const chatRef = ref(database, `chats/${chatKey}`);
+                set(chatRef, {
+                    participants: [user.uid, matchedUid],
+                    messages: [] // Initialize empty chat messages
+                }).catch((error) => {
+                    console.error('Error creating chat node:', error);
                 });
             }
         });
+
+        // Enable searching if gender is selected
+        if (selectedGender) {
+            saveUserGender();
+        }
+    } else {
+        // Sign in anonymously if not authenticated
+        signInAnonymously(auth).catch((error) => {
+            console.error("Error signing in anonymously: ", error);
+        });
+    }
+});
 
         const genderOptions = document.querySelectorAll('.gender-option');
 
@@ -160,23 +199,40 @@ function findMatch() {
             const availableUsers = usersArray.filter(user => user.gender === oppositeGender && !user.busy);
 
             if (availableUsers.length > 0) {
-                const randomIndex = Math.floor(Math.random() * availableUsers.length);
-                const matchedUser = availableUsers[randomIndex];
+                // Loop until a non-busy user is found
+                let matchedUser = null;
+                let attempts = 0; // To avoid infinite loop
 
-                // Mark both users as busy and matched
-                const updates = {};
-                updates[`online/${user.uid}/matched`] = matchedUser.uid;
-                updates[`online/${matchedUser.uid}/matched`] = user.uid;
-                updates[`online/${user.uid}/busy`] = true;
-                updates[`online/${matchedUser.uid}/busy`] = true;
+                while (matchedUser === null && attempts < availableUsers.length) {
+                    const randomIndex = Math.floor(Math.random() * availableUsers.length);
+                    matchedUser = availableUsers[randomIndex];
 
-                update(ref(database), updates);
+                    if (matchedUser.busy) {
+                        // If the user is busy, reset matchedUser and try again
+                        matchedUser = null;
+                    }
 
-                console.log('Match found with:', matchedUser.uid);
-                alert('Match found with: ' + matchedUser.uid);
+                    attempts++;
+                }
 
-                // Stop the search and clear the timer
-                clearInterval(searchTimer);
+                if (matchedUser !== null) {
+                    // Mark both users as busy and matched
+                    const updates = {};
+                    updates[`online/${user.uid}/matched`] = matchedUser.uid;
+                    updates[`online/${matchedUser.uid}/matched`] = user.uid;
+                    updates[`online/${user.uid}/busy`] = true;
+                    updates[`online/${matchedUser.uid}/busy`] = true;
+
+                    update(ref(database), updates);
+
+                    console.log('Match found with:', matchedUser.uid);
+                    alert('Match found with: ' + matchedUser.uid);
+
+                    // Stop the search and clear the timer
+                    clearInterval(searchTimer);
+                } else {
+                    console.log('No available users. Searching continues...');
+                }
             } else {
                 console.log('No users found! Searching continues...');
             }
